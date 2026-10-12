@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartCourseMap | AI-Powered Micro-Credential Course Mapping Lab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            purpleDark: '#3B0764',
+                            purple: '#4C1D95',
+                            purpleLight: '#5B21B6',
+                            goldDark: '#D97706',
+                            gold: '#F59E0B',
+                            goldLight: '#FEF3C7',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS for Excel Exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, .font-heading { font-family: 'Outfit', sans-serif; }
+        .font-serif-title { font-family: 'Playfair Display', serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .badge-cognitive { background-color: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
+        .badge-affective { background-color: #FCE7F3; color: #BE185D; border: 1px solid #FBCFE8; }
+        .badge-psychomotor { background-color: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+
+        /* Print styling for Certificate generation */
+        @media print {
+            body * { visibility: hidden; }
+            #printable-certificate-area, #printable-certificate-area * { visibility: visible; }
+            #printable-certificate-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 bg-slate-50">
+    <!-- Navigation Header -->
+    <header class="bg-brand-purpleDark text-white shadow-xl sticky top-0 z-40 border-b-2 border-brand-gold">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <!-- Branding -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="app.navigateTo('landing')">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-gold to-brand-goldDark flex items-center justify-center text-brand-purpleDark font-extrabold text-2xl shadow-md border-2 border-white">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="text-xl font-bold font-heading tracking-tight text-white">SmartCourseMap</h1>
+                            <span class="bg-brand-gold/20 text-brand-gold text-xs px-2 py-0.5 rounded font-semibold border border-brand-gold/30">USM Lab</span>
+                        </div>
+                        <p class="text-xs text-purple-200">AI-Powered Micro-Credential Course Mapping Lab</p>
+                    </div>
+                </div>
+
+                <!-- Right Actions -->
+                <div class="flex items-center space-x-3">
+                    <div id="system-mode-badge" class="hidden md:flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span id="system-mode-text">Demo Mode (Local)</span>
+                    </div>
+
+                    <button onclick="app.openModal('toolkit-modal')" class="text-xs bg-brand-gold hover:bg-brand-goldDark text-brand-purpleDark font-bold px-3 py-2 rounded-lg shadow transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-database"></i>
+                        <span class="hidden sm:inline">SQL & Setup</span>
+                    </button>
+
+                    <div id="auth-buttons-container" class="flex items-center space-x-2">
+                        <button onclick="app.navigateTo('auth')" class="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-1.5 rounded-lg transition font-medium">Sign In</button>
+                    </div>
+
+                    <div id="user-profile-container" class="hidden flex items-center space-x-3">
+                        <div class="text-right hidden sm:block">
+                            <div id="user-display-name" class="text-xs font-semibold text-white">Dr. User</div>
+                            <div id="user-display-role" class="text-[10px] text-amber-300 font-medium">Participant</div>
+                        </div>
+                        <button onclick="app.logout()" class="text-slate-300 hover:text-white text-sm p-2 rounded-lg hover:bg-purple-900/50 transition" title="Log Out">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic Sub-Bar for Workspace Tabs -->
+        <div id="workspace-nav-bar" class="hidden bg-brand-purple border-t border-purple-800/60 px-4 sm:px-8">
+            <div class="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto custom-scrollbar py-1">
+                <div class="flex space-x-1 text-xs py-1">
+                    <button onclick="app.switchRound(1)" id="tab-round-1" class="px-3 py-1.5 rounded-lg font-medium text-purple-200 hover:text-white hover:bg-purple-800/50 transition flex items-center space-x-1">
+                        <span class="w-5 h-5 rounded-full bg-purple-900 text-amber-300 text-[10px] flex items-center justify-center font-bold">1</span>
+                        <span>Course Info & CLOs</span>
+                    </button>
+                    <button onclick="app.switchRound(2)" id="tab-round-2" class="px-3 py-1.5 rounded-lg font-medium text-purple-200 hover:text-white hover:bg-purple-800/50 transition flex items-center space-x-1">
+                        <span class="w-5 h-5 rounded-full bg-purple-900 text-amber-300 text-[10px] flex items-center justify-center font-bold">2</span>
+                        <span>Modules</span>
+                    </button>
+                    <button onclick="app.switchRound(3)" id="tab-round-3" class="px-3 py-1.5 rounded-lg font-medium text-purple-200 hover:text-white hover:bg-purple-800/50 transition flex items-center space-x-1">
+                        <span class="w-5 h-5 rounded-full bg-purple-900 text-amber-300 text-[10px] flex items-center justify-center font-bold">3</span>
+                        <span>MLO & Bloom Matrix</span>
+                    </button>
+                    <button onclick="app.switchRound(4)" id="tab-round-4" class="px-3 py-1.5 rounded-lg font-medium text-purple-200 hover:text-white hover:bg-purple-800/50 transition flex items-center space-x-1">
+                        <span class="w-5 h-5 rounded-full bg-purple-900 text-amber-300 text-[10px] flex items-center justify-center font-bold">4</span>
+                        <span>Activities & SLT</span>
+                    </button>
+                    <button onclick="app.switchRound(5)" id="tab-round-5" class="px-3 py-1.5 rounded-lg font-medium text-purple-200 hover:text-white hover:bg-purple-800/50 transition flex items-center space-x-1">
+                        <span class="w-5 h-5 rounded-full bg-purple-900 text-amber-300 text-[10px] flex items-center justify-center font-bold">5</span>
+                        <span>Verification & Score</span>
+                    </button>
+                    <button onclick="app.switchRound(6)" id="tab-round-6" class="px-3 py-1.5 rounded-lg font-medium text-purple-200 hover:text-white hover:bg-purple-800/50 transition flex items-center space-x-1">
+                        <i class="fa-solid fa-table text-amber-300 mr-0.5"></i>
+                        <span>Full Mapping Table</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-2 shrink-0">
+                    <button onclick="app.submitFinalMapping()" class="bg-gradient-to-r from-brand-gold to-amber-500 hover:from-amber-500 hover:to-amber-600 text-brand-purpleDark font-extrabold text-xs px-4 py-1.5 rounded-md shadow-md transition flex items-center space-x-1.5 transform hover:scale-105">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>SUBMIT FINAL MAPPING</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- Toast Notifications Container -->
+        <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+        <!-- VIEW 1: LANDING PAGE -->
+        <section id="view-landing" class="space-y-8 py-4">
+            <div class="relative rounded-3xl bg-gradient-to-br from-brand-purpleDark via-brand-purple to-slate-900 text-white p-8 sm:p-12 shadow-2xl overflow-hidden border border-brand-gold/30">
+                <div class="absolute -right-10 -bottom-10 opacity-10 text-brand-gold pointer-events-none">
+                    <i class="fa-solid fa-brain text-[320px]"></i>
+                </div>
+                <div class="relative z-10 max-w-3xl space-y-5">
+                    <div class="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-brand-gold/20 text-brand-gold text-xs font-semibold border border-brand-gold/40">
+                        <i class="fa-solid fa-university"></i>
+                        <span>Universiti Sains Malaysia (USM) School of Management</span>
+                    </div>
+                    <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading leading-tight">
+                        Developing Stand-Alone Micro-Credentials Through <span class="text-brand-gold">AI-Assisted</span> Course Mapping
+                    </h1>
+                    <p class="text-purple-100 text-sm sm:text-base leading-relaxed">
+                        Full-spectrum multi-user lab platform enabling academics to map outcomes across <strong class="text-amber-300">Cognitive (C1–C6)</strong>, <strong class="text-pink-300">Affective (A1–A5)</strong>, and <strong class="text-amber-200">Psychomotor (P1–P7)</strong> Bloom's taxonomy domains, compute SLT, and receive an official USM Certificate of Completion upon approval.
+                    </p>
+                    <div class="pt-3 flex flex-wrap gap-4 items-center">
+                        <button onclick="app.navigateTo('auth')" class="bg-brand-gold hover:bg-brand-goldDark text-brand-purpleDark font-bold text-base px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition flex items-center space-x-2">
+                            <span>Register & Start Mapping</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                        <button onclick="app.demoQuickLogin('participant')" class="bg-white/10 hover:bg-white/20 text-white border border-white/30 text-sm font-semibold px-5 py-3 rounded-xl transition flex items-center space-x-2">
+                            <i class="fa-solid fa-bolt text-brand-gold"></i>
+                            <span>Participant Demo</span>
+                        </button>
+                        <button onclick="app.demoQuickLogin('facilitator')" class="bg-purple-900/80 hover:bg-purple-900 text-amber-300 border border-purple-500/40 text-sm font-semibold px-5 py-3 rounded-xl transition flex items-center space-x-2">
+                            <i class="fa-solid fa-user-shield"></i>
+                            <span>Facilitator Portal</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-8 pt-6 border-t border-white/10 flex flex-wrap justify-between items-center text-xs text-purple-200">
+                    <div><span class="font-bold text-white">Developer:</span> Dr. Nik Hadiyan Nik Azman</div>
+                    <div><span class="font-bold text-white">Institution:</span> School of Management, Universiti Sains Malaysia (USM)</div>
+                </div>
+            </div>
+
+            <!-- 3 Taxonomy Domain Highlight Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-sky-500 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="badge-cognitive text-xs px-2.5 py-1 rounded-md font-bold">C1 - C6 Levels</span>
+                        <i class="fa-solid fa-brain text-sky-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">1. Cognitive Domain</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">Knowledge processing from Remembering (C1), Understanding (C2), Applying (C3), Analyzing (C4), Evaluating (C5) to Creating (C6).</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-pink-500 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="badge-affective text-xs px-2.5 py-1 rounded-md font-bold">A1 - A5 Levels</span>
+                        <i class="fa-solid fa-heart-pulse text-pink-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">2. Affective Domain</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">Values, attitudes, and emotional growth from Receiving (A1), Responding (A2), Valuing (A3), Organizing (A4) to Characterizing (A5).</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-amber-500 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="badge-psychomotor text-xs px-2.5 py-1 rounded-md font-bold">P1 - P7 Levels</span>
+                        <i class="fa-solid fa-hands-tools text-amber-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">3. Psychomotor Domain</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">Manual and physical skill sets from Perception (P1), Set (P2), Guided Response (P3), Mechanism (P4), Complex Response (P5), Adaptation (P6) to Origination (P7).</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: AUTHENTICATION PAGE -->
+        <section id="view-auth" class="hidden max-w-md mx-auto py-8">
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-6">
+                <div class="text-center space-y-2">
+                    <div class="w-16 h-16 rounded-2xl bg-brand-purpleDark text-brand-gold flex items-center justify-center text-3xl font-extrabold mx-auto shadow-md">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold font-heading text-slate-900">Workshop Sign In</h2>
+                    <p class="text-xs text-slate-500">Access your independent micro-credential course mapping workspace.</p>
+                </div>
+
+                <div class="flex border-b border-slate-200">
+                    <button onclick="app.toggleAuthTab('login')" id="auth-tab-login" class="flex-1 py-2 text-center text-sm font-semibold border-b-2 border-brand-purple text-brand-purple">Log In</button>
+                    <button onclick="app.toggleAuthTab('register')" id="auth-tab-register" class="flex-1 py-2 text-center text-sm font-semibold border-b-2 border-transparent text-slate-400">Register</button>
+                </div>
+
+                <form id="form-login" onsubmit="app.handleLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+                        <input type="email" id="login-email" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-purple focus:outline-none" placeholder="academic@usm.my">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                        <input type="password" id="login-password" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-purple focus:outline-none" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="w-full bg-brand-purple hover:bg-brand-purpleLight text-white font-bold py-2.5 rounded-lg shadow transition text-sm">
+                        Sign In to Workspace
+                    </button>
+                </form>
+
+                <form id="form-register" onsubmit="app.handleRegister(event)" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name (with Title)</label>
+                        <input type="text" id="reg-name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="Dr. Jane Smith">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Institution / School</label>
+                        <input type="text" id="reg-institution" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="School of Management, USM">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+                        <input type="email" id="reg-email" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="jane@usm.my">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                        <input type="password" id="reg-password" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Role</label>
+                        <select id="reg-role" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            <option value="participant">Participant (Lecturer)</option>
+                            <option value="facilitator">Facilitator / Admin</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full bg-brand-gold hover:bg-brand-goldDark text-brand-purpleDark font-bold py-2.5 rounded-lg shadow transition text-sm">
+                        Register Workshop Account
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- VIEW 3: PARTICIPANT WORKSPACE -->
+        <section id="view-workspace" class="hidden space-y-6">
+
+            <!-- Approved Certificate Unlock Banner (Dynamic) -->
+            <div id="participant-cert-banner" class="hidden bg-gradient-to-r from-amber-500 via-brand-gold to-yellow-500 text-brand-purpleDark p-4 sm:p-5 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 border border-amber-300">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-xl bg-brand-purpleDark text-brand-gold flex items-center justify-center text-2xl shadow">
+                        <i class="fa-solid fa-award"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-extrabold font-heading text-brand-purpleDark">Congratulations! Certificate of Completion Awarded</h3>
+                        <p class="text-xs text-brand-purpleDark/90 font-medium">Your course mapping submission has been reviewed and officially approved by the workshop facilitator.</p>
+                    </div>
+                </div>
+                <button onclick="app.viewCertificateForActiveParticipant()" class="bg-brand-purpleDark hover:bg-purple-900 text-brand-gold text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-md transition flex items-center space-x-2 shrink-0">
+                    <i class="fa-solid fa-file-pdf text-amber-300"></i>
+                    <span>Download / Print Certificate</span>
+                </button>
+            </div>
+
+            <!-- Workspace Banner Bar -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span id="ws-course-code-badge" class="bg-brand-purpleDark text-amber-300 text-xs font-bold px-2.5 py-0.5 rounded">MGT101</span>
+                        <h2 id="ws-course-title" class="text-xl font-bold font-heading text-slate-900">Microeconomics for Beginner</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">
+                        Participant: <span id="ws-participant-name" class="font-semibold text-slate-700">Dr. Participant</span> | 
+                        Target SLT: <span id="ws-target-slt" class="font-semibold text-slate-700">40 Hours</span> | 
+                        Status: <span id="ws-submission-status" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-600">Draft</span>
+                    </p>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <button onclick="app.openModal('bloom-guide-modal')" class="bg-purple-50 hover:bg-purple-100 text-brand-purple border border-purple-200 p-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5">
+                        <i class="fa-solid fa-book-open"></i>
+                        <span>Bloom's Action Verbs Guide</span>
+                    </button>
+                    <button onclick="app.exportReport('xlsx')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 p-2 rounded-lg text-xs font-semibold flex items-center space-x-1" title="Export Excel">
+                        <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                        <span>Excel</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ROUND 1 CONTAINER -->
+            <div id="round-1-container" class="space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div class="border-b border-slate-200 pb-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-brand-purpleDark">Round 1: Course Info & 3-Domain CLO Identification</h3>
+                            <p class="text-xs text-slate-500">Specify course attributes and classify CLOs across Cognitive, Affective, or Psychomotor domains.</p>
+                        </div>
+                        <button onclick="app.loadDemoCourse()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg font-medium transition">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Reset Demo Data
+                        </button>
+                    </div>
+
+                    <!-- Course Info Form -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Course Code</label>
+                            <input type="text" id="r1-course-code" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-medium" onchange="app.updateCourseInfo()">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block font-semibold text-slate-700 mb-1">Course Title</label>
+                            <input type="text" id="r1-course-title" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-medium" onchange="app.updateCourseInfo()">
+                        </div>
+                        <div class="md:col-span-3">
+                            <label class="block font-semibold text-slate-700 mb-1">Course Synopsis</label>
+                            <textarea id="r1-course-synopsis" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg" onchange="app.updateCourseInfo()"></textarea>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Credit Hours</label>
+                            <input type="number" id="r1-credit-hours" class="w-full px-3 py-2 border border-slate-300 rounded-lg" onchange="app.updateCourseInfo()">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Target Total SLT (Hours)</label>
+                            <input type="number" id="r1-target-slt" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-brand-purpleDark" onchange="app.updateCourseInfo()">
+                        </div>
+                    </div>
+
+                    <!-- CLO List -->
+                    <div class="space-y-4 pt-4 border-t border-slate-100">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-sm font-bold text-slate-800">Course Learning Outcomes (CLOs)</h4>
+                            <button onclick="app.addCLO()" class="text-xs bg-brand-purple text-white px-3 py-1.5 rounded-lg font-semibold flex items-center space-x-1">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Add CLO</span>
+                            </button>
+                        </div>
+
+                        <div id="clo-list-container" class="space-y-3">
+                            <!-- Dynamically rendered -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROUND 2 CONTAINER -->
+            <div id="round-2-container" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div class="border-b border-slate-200 pb-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-brand-purpleDark">Round 2: Module Development & Topic Skill Mapping</h3>
+                            <p class="text-xs text-slate-500">Group course topics into standalone micro-credential modules.</p>
+                        </div>
+                        <button onclick="app.addModule()" class="text-xs bg-brand-purple text-white px-3 py-1.5 rounded-lg font-semibold">
+                            <i class="fa-solid fa-plus mr-1"></i> Create Module
+                        </button>
+                    </div>
+
+                    <div id="module-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Dynamically rendered modules -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROUND 3 CONTAINER -->
+            <div id="round-3-container" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div class="border-b border-slate-200 pb-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-brand-purpleDark">Round 3: MLOs & 3-Domain CLO Alignment Matrix</h3>
+                            <p class="text-xs text-slate-500">Develop MLOs across Cognitive, Affective, and Psychomotor domains and map to parent CLOs.</p>
+                        </div>
+                        <button onclick="app.addMLO()" class="text-xs bg-brand-purple text-white px-3 py-1.5 rounded-lg font-semibold">
+                            <i class="fa-solid fa-plus mr-1"></i> Add MLO
+                        </button>
+                    </div>
+
+                    <div id="mlo-list-container" class="space-y-3">
+                        <!-- MLO list -->
+                    </div>
+
+                    <!-- Alignment Matrix -->
+                    <div class="space-y-3 pt-6 border-t border-slate-200">
+                        <h4 class="text-sm font-bold text-slate-800">CLO – MLO Visual Alignment Matrix</h4>
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                            <table id="matrix-table" class="w-full text-xs text-center border-collapse">
+                                <!-- Dynamic matrix table -->
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROUND 4 CONTAINER -->
+            <div id="round-4-container" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div class="border-b border-slate-200 pb-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-brand-purpleDark">Round 4: Learning Activities, Assessment & SLT Calculator</h3>
+                            <p class="text-xs text-slate-500">Assign Cognitive, Affective, and Psychomotor activities.</p>
+                        </div>
+                        <div class="px-4 py-2 rounded-xl text-center bg-emerald-100 border border-emerald-300 text-emerald-900">
+                            <div class="text-[10px] font-bold uppercase tracking-wider">Total Calculated SLT</div>
+                            <div class="text-xl font-extrabold" id="r4-total-slt-display">40.0 Hrs</div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-sm font-bold text-slate-800">Activities & Assessments Table</h4>
+                        <button onclick="app.addActivity()" class="text-xs bg-brand-purple text-white px-3 py-1.5 rounded-lg font-semibold">
+                            <i class="fa-solid fa-plus mr-1"></i> Add Activity
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table class="w-full text-xs text-left border-collapse">
+                            <thead class="bg-slate-100 font-bold text-slate-700">
+                                <tr>
+                                    <th class="p-2 border-b">Module</th>
+                                    <th class="p-2 border-b">Activity / Assessment</th>
+                                    <th class="p-2 border-b">Domain</th>
+                                    <th class="p-2 border-b">Category</th>
+                                    <th class="p-2 border-b">Guided (L/T/P)</th>
+                                    <th class="p-2 border-b">Independent (SCL)</th>
+                                    <th class="p-2 border-b">Total SLT</th>
+                                    <th class="p-2 border-b text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activity-table-body" class="divide-y divide-slate-100">
+                                <!-- Dynamic activity rows -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h4 class="text-xs font-bold text-slate-700 mb-2">3-Domain SLT Workload Distribution</h4>
+                            <div class="h-48 relative">
+                                <canvas id="domainChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-700">SLT Compliance Check</h4>
+                            <div id="slt-warning-box" class="p-3 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <i class="fa-solid fa-circle-check mr-1"></i> Perfect alignment with target SLT credits.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROUND 5 CONTAINER -->
+            <div id="round-5-container" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div class="border-b border-slate-200 pb-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-brand-purpleDark">Round 5: Quality Verification & 3-Domain Audit</h3>
+                            <p class="text-xs text-slate-500">Verification of domain coverage balance and learning alignment.</p>
+                        </div>
+                        <button onclick="app.runQualityVerification()" class="text-xs bg-brand-gold text-brand-purpleDark px-4 py-2 rounded-lg font-bold shadow hover:bg-brand-goldDark transition">
+                            <i class="fa-solid fa-arrows-rotate mr-1"></i> Re-Run Audit
+                        </button>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-brand-purpleDark to-slate-900 text-white p-6 rounded-2xl shadow-md flex justify-between items-center">
+                        <div>
+                            <div class="text-xs font-semibold text-brand-gold uppercase tracking-wider">USM Workshop Rubric Assessment</div>
+                            <h4 class="text-2xl font-bold font-heading">Course Mapping Performance Score</h4>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur p-4 rounded-xl text-center min-w-[120px]">
+                            <div id="overall-score-display" class="text-4xl font-extrabold text-brand-gold">94%</div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table class="w-full text-xs text-left border-collapse">
+                            <thead class="bg-slate-100 font-bold text-slate-700">
+                                <tr>
+                                    <th class="p-3 border-b">Evaluation Criteria</th>
+                                    <th class="p-3 border-b text-center">Weight</th>
+                                    <th class="p-3 border-b text-center">Score</th>
+                                    <th class="p-3 border-b">3-Domain Audit Findings</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rubric-table-body" class="divide-y divide-slate-100">
+                                <!-- Dynamic Rubric Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROUND 6 CONTAINER -->
+            <div id="round-6-container" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div class="border-b border-slate-200 pb-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-brand-purpleDark">Full Course Mapping Table (3 Domains)</h3>
+                            <p class="text-xs text-slate-500">Comprehensive course mapping master table including Cognitive (C), Affective (A), and Psychomotor (P) classifications.</p>
+                        </div>
+                        <button onclick="app.exportReport('xlsx')" class="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold">
+                            <i class="fa-solid fa-file-excel mr-1"></i> Export Master Excel
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table class="w-full text-xs border-collapse">
+                            <thead class="bg-brand-purpleDark text-white font-bold">
+                                <tr>
+                                    <th class="p-2 border">CLO</th>
+                                    <th class="p-2 border">Chapter / Topics</th>
+                                    <th class="p-2 border">Module</th>
+                                    <th class="p-2 border">MLO</th>
+                                    <th class="p-2 border">Domain & Bloom Level</th>
+                                    <th class="p-2 border">Content / Duration</th>
+                                    <th class="p-2 border">SCL Activities / Assessment</th>
+                                    <th class="p-2 border text-center">SLT (Hrs)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="master-table-body" class="divide-y divide-slate-200">
+                                <!-- Dynamic Master Table -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- VIEW 4: FACILITATOR DASHBOARD -->
+        <section id="view-facilitator" class="hidden space-y-6">
+            <div class="bg-gradient-to-r from-brand-purpleDark to-slate-900 text-white p-6 rounded-2xl shadow-xl flex justify-between items-center">
+                <div>
+                    <span class="bg-brand-gold text-brand-purpleDark text-xs font-bold px-2.5 py-0.5 rounded uppercase">Facilitator Portal</span>
+                    <h2 class="text-2xl font-bold font-heading mt-1">SmartCourseMap | Workshop Submission Management</h2>
+                    <p class="text-xs text-purple-200">Lead Facilitator: Dr. Nik Hadiyan Nik Azman (USM School of Management)</p>
+                </div>
+                <button onclick="app.exportAllSubmissionsSummary()" class="bg-brand-gold text-brand-purpleDark font-bold text-xs px-4 py-2 rounded-lg shadow">
+                    <i class="fa-solid fa-file-excel mr-1"></i> Export Excel Summary
+                </button>
+            </div>
+
+            <!-- Dashboard Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-xs text-slate-500 font-semibold">Submissions</div>
+                    <div id="stat-total-submissions" class="text-2xl font-bold text-brand-purpleDark mt-1">2</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-xs text-slate-500 font-semibold">Cognitive MLOs</div>
+                    <div id="stat-cog-mlos" class="text-2xl font-bold text-sky-600 mt-1">8</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-xs text-slate-500 font-semibold">Affective MLOs</div>
+                    <div id="stat-aff-mlos" class="text-2xl font-bold text-pink-600 mt-1">3</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-xs text-slate-500 font-semibold">Psychomotor MLOs</div>
+                    <div id="stat-psy-mlos" class="text-2xl font-bold text-amber-600 mt-1">2</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-xs text-slate-500 font-semibold">Avg Workshop Score</div>
+                    <div id="stat-avg-score" class="text-2xl font-bold text-emerald-600 mt-1">91%</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                    <div class="text-xs text-slate-500 font-semibold">SLT Compliance</div>
+                    <div id="stat-slt-compliance" class="text-2xl font-bold text-purple-700 mt-1">100%</div>
+                </div>
+            </div>
+
+            <!-- Submissions Directory -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-base font-bold text-slate-800">Participant Submissions Directory</h3>
+                    <div class="text-xs text-slate-500">Select any submission to inspect mappings, score rubrics, and issue certificates</div>
+                </div>
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead class="bg-slate-100 font-bold text-slate-700">
+                            <tr>
+                                <th class="p-3 border-b">No.</th>
+                                <th class="p-3 border-b">Participant</th>
+                                <th class="p-3 border-b">Institution</th>
+                                <th class="p-3 border-b">Course</th>
+                                <th class="p-3 border-b text-center">SLT</th>
+                                <th class="p-3 border-b text-center">Score</th>
+                                <th class="p-3 border-b text-center">Status</th>
+                                <th class="p-3 border-b text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fac-submissions-table-body" class="divide-y divide-slate-100">
+                            <!-- Submissions populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FACILITATOR REVIEW SUBMISSION MODAL -->
+    <div id="review-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white max-w-5xl w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="bg-brand-purpleDark text-white p-5 flex justify-between items-center border-b border-brand-gold/40">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-gold text-brand-purpleDark flex items-center justify-center font-bold text-xl">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold font-heading" id="rev-modal-title">Review Submission - Dr. Participant</h3>
+                        <p class="text-xs text-purple-200" id="rev-modal-subtitle">Course: MGT101 Microeconomics for Beginner | USM</p>
+                    </div>
+                </div>
+                <button onclick="app.closeModal('review-modal')" class="text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Body Content -->
+            <div class="p-6 overflow-y-auto space-y-6 text-xs custom-scrollbar">
+
+                <!-- Meta Summary -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                        <span class="text-[10px] text-slate-500 uppercase font-semibold">Submission ID</span>
+                        <div class="font-bold text-slate-800" id="rev-sub-id">SCM-3D-1001</div>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-500 uppercase font-semibold">Submission Date</span>
+                        <div class="font-bold text-slate-800" id="rev-sub-date">2026-03-15</div>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-500 uppercase font-semibold">Total SLT</span>
+                        <div class="font-bold text-purple-900" id="rev-sub-slt">40 Hrs</div>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-500 uppercase font-semibold">Current Score</span>
+                        <div class="font-extrabold text-emerald-600 text-sm" id="rev-sub-score">94%</div>
+                    </div>
+                </div>
+
+                <!-- Course Mapping Content Inspection -->
+                <div class="space-y-4">
+                    <h4 class="text-sm font-bold text-slate-800 border-b pb-2 flex items-center justify-between">
+                        <span>Participant Course Mapping Details</span>
+                        <span class="text-xs font-normal text-slate-500">Cognitive, Affective & Psychomotor Domains</span>
+                    </h4>
+
+                    <!-- Inspection Table -->
+                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table class="w-full text-xs text-left border-collapse">
+                            <thead class="bg-slate-100 font-bold text-slate-700">
+                                <tr>
+                                    <th class="p-2 border-b">CLO</th>
+                                    <th class="p-2 border-b">Module & MLO</th>
+                                    <th class="p-2 border-b">Domain / Level</th>
+                                    <th class="p-2 border-b">Activities & Assessments</th>
+                                    <th class="p-2 border-b text-center">SLT (Hrs)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rev-inspection-body" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Facilitator Review & Rubric Form -->
+                <div class="bg-purple-50/60 p-5 rounded-2xl border border-purple-200 space-y-4">
+                    <h4 class="text-sm font-bold text-brand-purpleDark flex items-center justify-between">
+                        <span class="flex items-center space-x-2">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                            <span>Facilitator Feedback & Rubric Scoring</span>
+                        </span>
+                        <button id="rev-btn-preview-cert" onclick="app.viewActiveSubmissionCertificate()" class="hidden text-xs bg-brand-gold hover:bg-brand-goldDark text-brand-purpleDark px-3 py-1 rounded-lg font-bold shadow flex items-center space-x-1">
+                            <i class="fa-solid fa-award"></i>
+                            <span>Preview Certificate</span>
+                        </button>
+                    </h4>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Update Status</label>
+                            <select id="rev-input-status" class="w-full p-2 border border-slate-300 rounded-lg font-medium text-xs">
+                                <option value="Submitted">Submitted (Pending Review)</option>
+                                <option value="Under Review">Under Review</option>
+                                <option value="Revision Required">Revision Required</option>
+                                <option value="Reviewed">Reviewed / Approved (Issue Certificate)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-700 mb-1">Rubric Score Override (%)</label>
+                            <input type="number" id="rev-input-score" min="0" max="100" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-brand-purpleDark" value="94">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Facilitator Written Feedback & Recommendations</label>
+                        <textarea id="rev-input-feedback" rows="3" class="w-full p-2.5 border border-slate-300 rounded-lg text-xs" placeholder="Excellent domain coverage across Cognitive and Affective domains..."></textarea>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="bg-slate-100 p-4 border-t border-slate-200 flex justify-between items-center">
+                <button onclick="app.closeModal('review-modal')" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-xs">
+                    Cancel
+                </button>
+                <div class="flex items-center space-x-2">
+                    <button onclick="app.saveFacilitatorReview('Revision Required')" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs shadow transition">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> Request Revision
+                    </button>
+                    <button onclick="app.saveFacilitatorReview('Reviewed')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-award text-brand-gold"></i>
+                        <span>Approve & Issue Certificate</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- USM CERTIFICATE OF COMPLETION MODAL -->
+    <div id="certificate-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white max-w-4xl w-full rounded-2xl shadow-2xl border border-brand-gold overflow-hidden flex flex-col my-auto">
+            <!-- Modal Actions Bar (hidden on print) -->
+            <div class="no-print bg-brand-purpleDark text-white p-4 flex justify-between items-center border-b border-brand-gold/40">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-certificate text-brand-gold text-lg"></i>
+                    <span class="font-bold text-sm font-heading">USM Official Certificate of Completion</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="window.print()" class="bg-brand-gold hover:bg-brand-goldDark text-brand-purpleDark px-4 py-1.5 rounded-lg text-xs font-bold shadow flex items-center space-x-1.5 transition">
+                        <i class="fa-solid fa-print"></i>
+                        <span>Print / Save as PDF</span>
+                    </button>
+                    <button onclick="app.closeModal('certificate-modal')" class="text-slate-300 hover:text-white p-1">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- PRINTABLE CERTIFICATE AREA -->
+            <div id="printable-certificate-area" class="p-8 sm:p-12 bg-amber-50/30 text-slate-900 relative border-[12px] border-brand-purpleDark">
+                <!-- Inner Gold Ornamental Border -->
+                <div class="border-2 border-brand-gold p-6 sm:p-10 relative bg-white/90 shadow-inner space-y-6 text-center">
+                    
+                    <!-- Watermark Logo Placeholder -->
+                    <div class="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+                        <i class="fa-solid fa-graduation-cap text-[320px] text-brand-purpleDark"></i>
+                    </div>
+
+                    <!-- Header Crest & Institution -->
+                    <div class="space-y-2 relative z-10">
+                        <div class="w-16 h-16 rounded-full bg-brand-purpleDark text-brand-gold flex items-center justify-center text-3xl font-extrabold mx-auto shadow-md border-2 border-brand-gold">
+                            <i class="fa-solid fa-university"></i>
+                        </div>
+                        <h3 class="text-sm font-bold tracking-widest text-brand-purpleDark uppercase">Universiti Sains Malaysia (USM)</h3>
+                        <p class="text-xs text-slate-600 font-semibold uppercase tracking-wider">School of Management</p>
+                    </div>
+
+                    <!-- Title -->
+                    <div class="py-2 relative z-10">
+                        <h1 class="text-3xl sm:text-4xl font-serif-title font-bold text-slate-900 tracking-wide">Certificate of Completion</h1>
+                        <p class="text-xs text-brand-goldDark font-bold uppercase tracking-widest mt-1">SmartCourseMap AI-Powered Workshop</p>
+                    </div>
+
+                    <!-- Recipient -->
+                    <div class="space-y-1 relative z-10">
+                        <p class="text-xs text-slate-500 italic">This is to certify that</p>
+                        <h2 id="cert-participant-name" class="text-2xl sm:text-3xl font-bold font-heading text-brand-purpleDark underline decoration-brand-gold decoration-2 underline-offset-4">Dr. Jane Smith</h2>
+                        <p id="cert-participant-institution" class="text-xs font-semibold text-slate-700">School of Management, Universiti Sains Malaysia</p>
+                    </div>
+
+                    <!-- Workshop Description -->
+                    <div class="max-w-2xl mx-auto space-y-2 text-xs leading-relaxed text-slate-600 relative z-10">
+                        <p>has successfully completed the practical course mapping laboratory titled:</p>
+                        <div class="font-bold text-sm text-slate-800 bg-amber-100/60 p-2.5 rounded-lg border border-amber-200" id="cert-workshop-topic">
+                            "Developing Stand-Alone Micro-Credentials Through AI-Assisted Course Mapping"
+                        </div>
+                        <p>demonstrating full competence in 3-domain outcome mapping across Cognitive (C1–C6), Affective (A1–A5), and Psychomotor (P1–P7) Bloom's taxonomy domains, Student Learning Time (SLT) calculation, and quality verification audits.</p>
+                    </div>
+
+                    <!-- Signatures & Verification Row -->
+                    <div class="pt-8 grid grid-cols-2 gap-8 items-end relative z-10 border-t border-slate-200 mt-6">
+                        <!-- Left: Workshop Developer & Facilitator -->
+                        <div class="text-center space-y-1">
+                            <div class="h-10 font-serif-title text-brand-purpleDark font-bold italic text-base flex items-end justify-center border-b border-slate-400 max-w-[200px] mx-auto pb-1">
+                                Dr. Nik Hadiyan
+                            </div>
+                            <div class="text-xs font-bold text-slate-800">Dr. Nik Hadiyan Nik Azman</div>
+                            <div class="text-[10px] text-slate-500">Workshop Developer & Lead Facilitator</div>
+                            <div class="text-[10px] text-slate-500">School of Management, USM</div>
+                        </div>
+
+                        <!-- Right: Date & Verification Stamp -->
+                        <div class="text-center space-y-1">
+                            <div id="cert-issue-date" class="h-10 font-mono text-slate-800 font-bold text-xs flex items-end justify-center border-b border-slate-400 max-w-[200px] mx-auto pb-1">
+                                Date: 2026-03-15
+                            </div>
+                            <div class="text-[10px] font-bold text-brand-purpleDark">Verification ID:</div>
+                            <div id="cert-verification-id" class="text-[10px] font-mono font-extrabold text-amber-700 bg-amber-100 px-2 py-0.5 rounded inline-block">
+                                USM-SCM-2026-9482
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BLOOM'S TAXONOMY ACTION VERBS GUIDE MODAL -->
+    <div id="bloom-guide-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white max-w-3xl w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="bg-brand-purpleDark text-white p-5 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-book-open text-brand-gold"></i>
+                    <h3 class="text-base font-bold font-heading">3-Domain Bloom's Taxonomy Action Verbs Matrix</h3>
+                </div>
+                <button onclick="app.closeModal('bloom-guide-modal')" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-4 text-xs custom-scrollbar">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Cognitive -->
+                    <div class="border border-sky-200 rounded-xl p-4 bg-sky-50/50 space-y-2">
+                        <h4 class="font-bold text-sky-900 flex items-center space-x-1">
+                            <i class="fa-solid fa-brain"></i>
+                            <span>1. Cognitive (Thinking)</span>
+                        </h4>
+                        <p class="text-[11px] text-sky-800 font-semibold">C1: Remember - Define, List, State</p>
+                        <p class="text-[11px] text-sky-800 font-semibold">C2: Understand - Explain, Discuss, Describe</p>
+                        <p class="text-[11px] text-sky-800 font-semibold">C3: Apply - Demonstrate, Calculate, Solve</p>
+                        <p class="text-[11px] text-sky-800 font-semibold">C4: Analyze - Compare, Differentiate, Diagram</p>
+                        <p class="text-[11px] text-sky-800 font-semibold">C5: Evaluate - Critique, Justify, Assess</p>
+                        <p class="text-[11px] text-sky-800 font-semibold">C6: Create - Design, Formulate, Construct</p>
+                    </div>
+                    <!-- Affective -->
+                    <div class="border border-pink-200 rounded-xl p-4 bg-pink-50/50 space-y-2">
+                        <h4 class="font-bold text-pink-900 flex items-center space-x-1">
+                            <i class="fa-solid fa-heart-pulse"></i>
+                            <span>2. Affective (Feeling/Values)</span>
+                        </h4>
+                        <p class="text-[11px] text-pink-800 font-semibold">A1: Receiving - Attend, Acknowledge, Listen</p>
+                        <p class="text-[11px] text-pink-800 font-semibold">A2: Responding - Discuss, Conform, Assist</p>
+                        <p class="text-[11px] text-pink-800 font-semibold">A3: Valuing - Demonstrate, Commit, Promote</p>
+                        <p class="text-[11px] text-pink-800 font-semibold">A4: Organizing - Formulate, Integrate, Synthesize</p>
+                        <p class="text-[11px] text-pink-800 font-semibold">A5: Characterizing - Internalize, Exemplify, Act</p>
+                    </div>
+                    <!-- Psychomotor -->
+                    <div class="border border-amber-200 rounded-xl p-4 bg-amber-50/50 space-y-2">
+                        <h4 class="font-bold text-amber-900 flex items-center space-x-1">
+                            <i class="fa-solid fa-hands-tools"></i>
+                            <span>3. Psychomotor (Physical/Skills)</span>
+                        </h4>
+                        <p class="text-[11px] text-amber-800 font-semibold">P1: Perception - Detect, Differentiate, Isolate</p>
+                        <p class="text-[11px] text-amber-800 font-semibold">P2: Set - Position, Display, Proceed</p>
+                        <p class="text-[11px] text-amber-800 font-semibold">P3: Guided Response - Copy, Trace, Reproduce</p>
+                        <p class="text-[11px] text-amber-800 font-semibold">P4: Mechanism - Assemble, Calibrate, Operate</p>
+                        <p class="text-[11px] text-amber-800 font-semibold">P5: Complex Response - Build, Master, Execute</p>
+                        <p class="text-[11px] text-amber-800 font-semibold">P6: Adaptation - Adapt, Reorganize, Vary</p>
+                        <p class="text-[11px] text-amber-800 font-semibold">P7: Origination - Construct, Create, Produce</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SQL SETUP TOOLKIT MODAL -->
+    <div id="toolkit-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white max-w-3xl w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="bg-slate-900 text-white p-5 flex justify-between items-center">
+                <h3 class="text-base font-bold">Supabase PostgreSQL Schema with 3-Domain & Certificate Support</h3>
+                <button onclick="app.closeModal('toolkit-modal')" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto text-xs space-y-4 custom-scrollbar">
+                <pre class="bg-slate-900 text-slate-200 p-4 rounded-xl text-[11px] overflow-x-auto font-mono h-64 border border-slate-800"><code>-- PostgreSQL Schema with Bloom 3 Domains & Certificate Support
+CREATE TABLE IF NOT EXISTS public.submissions (
+    id TEXT PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id),
+    participant_name TEXT NOT NULL,
+    institution TEXT NOT NULL,
+    course_code TEXT NOT NULL,
+    course_title TEXT NOT NULL,
+    total_slt NUMERIC NOT NULL,
+    score NUMERIC NOT NULL,
+    status TEXT DEFAULT 'Submitted',
+    feedback TEXT,
+    verification_id TEXT,
+    data JSONB NOT NULL,
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.submissions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public submission view" ON public.submissions FOR SELECT USING (true);
+CREATE POLICY "Participant submission insert" ON public.submissions FOR INSERT WITH CHECK (true);
+</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        const BLOOM_LEVELS = {
+            Cognitive: [
+                { code: "C1", label: "C1: Remember", verbs: ["Define", "List", "State", "Recall", "Identify"] },
+                { code: "C2", label: "C2: Understand", verbs: ["Explain", "Discuss", "Describe", "Classify", "Summarize"] },
+                { code: "C3", label: "C3: Apply", verbs: ["Demonstrate", "Calculate", "Solve", "Execute", "Apply"] },
+                { code: "C4", label: "C4: Analyze", verbs: ["Compare", "Analyze", "Differentiate", "Diagram", "Deconstruct"] },
+                { code: "C5", label: "C5: Evaluate", verbs: ["Critique", "Justify", "Assess", "Evaluate", "Appraise"] },
+                { code: "C6", label: "C6: Create", verbs: ["Design", "Formulate", "Construct", "Devise", "Synthesize"] }
+            ],
+            Affective: [
+                { code: "A1", label: "A1: Receiving", verbs: ["Listen", "Acknowledge", "Attend", "Follow"] },
+                { code: "A2", label: "A2: Responding", verbs: ["Discuss", "Conform", "Participate", "Assist"] },
+                { code: "A3", label: "A3: Valuing", verbs: ["Demonstrate", "Commit", "Promote", "Value"] },
+                { code: "A4", label: "A4: Organizing", verbs: ["Integrate", "Synthesize", "Formulate", "Organize"] },
+                { code: "A5", label: "A5: Characterizing", verbs: ["Internalize", "Exemplify", "Act", "Display"] }
+            ],
+            Psychomotor: [
+                { code: "P1", label: "P1: Perception", verbs: ["Detect", "Differentiate", "Isolate", "Select"] },
+                { code: "P2", label: "P2: Set", verbs: ["Position", "Display", "Proceed", "Prepare"] },
+                { code: "P3", label: "P3: Guided Response", verbs: ["Copy", "Trace", "Reproduce", "Mimic"] },
+                { code: "P4", label: "P4: Mechanism", verbs: ["Assemble", "Calibrate", "Operate", "Conduct"] },
+                { code: "P5", label: "P5: Complex Response", verbs: ["Build", "Master", "Execute", "Perform"] },
+                { code: "P6", label: "P6: Adaptation", verbs: ["Adapt", "Reorganize", "Vary", "Revise"] },
+                { code: "P7", label: "P7: Origination", verbs: ["Construct", "Create", "Produce", "Design"] }
+            ]
+        };
+
+        const DEMO_COURSE_3D = {
+            code: "MGT101",
+            title: "Microeconomics for Beginner",
+            synopsis: "This course introduces fundamental economic decision-making, market equilibrium, supply-demand elasticity, ethical economic conduct, and practical market simulation skills.",
+            creditHours: 1,
+            targetSLT: 40,
+            clos: [
+                { id: "CLO1", statement: "Explain fundamental microeconomic principles and market equilibrium.", domain: "Cognitive", taxonomy: "C2" },
+                { id: "CLO2", statement: "Demonstrate commitment to ethical pricing and social welfare in market analysis.", domain: "Affective", taxonomy: "A3" },
+                { id: "CLO3", statement: "Operate interactive economic software to simulate market supply and demand curves.", domain: "Psychomotor", taxonomy: "P4" }
+            ],
+            modules: [
+                { id: "MOD1", name: "Introduction to Microeconomics", desc: "Core economic concepts, scarcity, and decision-making.", topics: ["Topic 1: Introduction"], cloId: "CLO1" },
+                { id: "MOD2", name: "Market Equilibrium & Ethics", desc: "Equilibrium determination and social welfare values.", topics: ["Topic 2: Equilibrium"], cloId: "CLO2" },
+                { id: "MOD3", name: "Market Simulation & Software Lab", desc: "Hands-on software calibration and supply curve simulation.", topics: ["Topic 3: Lab Simulation"], cloId: "CLO3" }
+            ],
+            mlos: [
+                { id: "MLO1", moduleId: "MOD1", statement: "Describe the economic problem of scarcity and opportunity cost.", domain: "Cognitive", taxonomy: "C2", cloAlignment: { CLO1: "Strong", CLO2: "None", CLO3: "None" } },
+                { id: "MLO2", moduleId: "MOD2", statement: "Demonstrate ethical awareness regarding price ceilings and consumer welfare.", domain: "Affective", taxonomy: "A3", cloAlignment: { CLO1: "Partial", CLO2: "Strong", CLO3: "None" } },
+                { id: "MLO3", moduleId: "MOD3", statement: "Operate supply-demand simulation tools to plot price sensitivity.", domain: "Psychomotor", taxonomy: "P4", cloAlignment: { CLO1: "None", CLO2: "None", CLO3: "Strong" } }
+            ],
+            activities: [
+                { id: "ACT1", moduleId: "MOD1", name: "Interactive Lecture & Reading", domain: "Cognitive", category: "Guided", guidedHours: 4, sclHours: 6, total: 10 },
+                { id: "ACT2", moduleId: "MOD2", name: "Ethics Discussion Forum & Reflection", domain: "Affective", category: "SCL", guidedHours: 2, sclHours: 8, total: 10 },
+                { id: "ACT3", moduleId: "MOD3", name: "Hands-on Simulation Software Lab", domain: "Psychomotor", category: "Formative Assessment", guidedHours: 4, sclHours: 16, total: 20 }
+            ]
+        };
+
+        class SmartCourseMapApp {
+            constructor() {
+                this.currentUser = null;
+                this.currentRound = 1;
+                this.courseData = JSON.parse(JSON.stringify(DEMO_COURSE_3D));
+                this.submissions = [];
+                this.activeReviewId = null;
+                this.chartInstance = null;
+            }
+
+            init() {
+                this.renderCLOList();
+                this.renderModuleList();
+                this.renderMLOList();
+                this.renderMatrixTable();
+                this.renderActivityTable();
+                this.renderRubricTable();
+                this.renderMasterTable();
+                this.updateSLTSummary();
+
+                const stored = localStorage.getItem('scm_submissions');
+                if (stored) {
+                    this.submissions = JSON.parse(stored);
+                } else {
+                    this.submissions = [
+                        {
+                            id: 'SCM-3D-1001',
+                            participantName: 'Dr. Jane Smith',
+                            institution: 'School of Management, USM',
+                            courseCode: 'MGT101',
+                            courseTitle: 'Microeconomics for Beginner',
+                            totalSLT: 40,
+                            score: 94,
+                            status: 'Reviewed',
+                            submittedAt: '2026-03-12',
+                            verificationId: 'USM-SCM-2026-9482',
+                            feedback: 'Outstanding mapping across Cognitive, Affective, and Psychomotor domains.',
+                            data: JSON.parse(JSON.stringify(DEMO_COURSE_3D))
+                        },
+                        {
+                            id: 'SCM-3D-1002',
+                            participantName: 'Assoc. Prof. Ahmad Razak',
+                            institution: 'Universiti Malaya',
+                            courseCode: 'FIN204',
+                            courseTitle: 'Financial Markets Analytics',
+                            totalSLT: 40,
+                            score: 88,
+                            status: 'Under Review',
+                            submittedAt: '2026-03-14',
+                            verificationId: '',
+                            feedback: 'Initial evaluation started.',
+                            data: JSON.parse(JSON.stringify(DEMO_COURSE_3D))
+                        }
+                    ];
+                    localStorage.setItem('scm_submissions', JSON.stringify(this.submissions));
+                }
+
+                const savedUser = localStorage.getItem('scm_user');
+                if (savedUser) {
+                    this.currentUser = JSON.parse(savedUser);
+                    this.updateUserUI();
+                }
+            }
+
+            navigateTo(viewId) {
+                ['landing', 'auth', 'workspace', 'facilitator'].forEach(v => {
+                    document.getElementById(`view-${v}`).classList.add('hidden');
+                });
+                document.getElementById(`view-${viewId}`).classList.remove('hidden');
+
+                const wsNav = document.getElementById('workspace-nav-bar');
+                if (viewId === 'workspace') {
+                    wsNav.classList.remove('hidden');
+                    this.switchRound(this.currentRound);
+                    this.checkParticipantCertificateBanner();
+                } else {
+                    wsNav.classList.add('hidden');
+                }
+
+                if (viewId === 'facilitator') this.loadFacilitatorData();
+            }
+
+            switchRound(r) {
+                this.currentRound = r;
+                for (let i = 1; i <= 6; i++) {
+                    const btn = document.getElementById(`tab-round-${i}`);
+                    const cnt = document.getElementById(`round-${i}-container`);
+                    if (btn) btn.className = "px-3 py-1.5 rounded-lg font-medium text-purple-200 hover:text-white hover:bg-purple-800/50 transition flex items-center space-x-1";
+                    if (cnt) cnt.classList.add('hidden');
+                }
+                const activeBtn = document.getElementById(`tab-round-${r}`);
+                const activeCnt = document.getElementById(`round-${r}-container`);
+                if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-bold text-brand-purpleDark bg-brand-gold shadow transition flex items-center space-x-1";
+                if (activeCnt) activeCnt.classList.remove('hidden');
+
+                if (r === 4) this.initDomainChart();
+                if (r === 5) this.runQualityVerification();
+                if (r === 6) this.renderMasterTable();
+            }
+
+            toggleAuthTab(t) {
+                const loginForm = document.getElementById('form-login');
+                const regForm = document.getElementById('form-register');
+                if (t === 'login') {
+                    loginForm.classList.remove('hidden');
+                    regForm.classList.add('hidden');
+                } else {
+                    loginForm.classList.add('hidden');
+                    regForm.classList.remove('hidden');
+                }
+            }
+
+            demoQuickLogin(role) {
+                this.currentUser = {
+                    id: role === 'facilitator' ? 'fac-1' : 'part-1',
+                    name: role === 'facilitator' ? 'Dr. Nik Hadiyan Nik Azman' : 'Dr. Jane Smith',
+                    institution: 'School of Management, USM',
+                    role: role,
+                    email: role === 'facilitator' ? 'nikhadiyan@usm.my' : 'janesmith@usm.my'
+                };
+                localStorage.setItem('scm_user', JSON.stringify(this.currentUser));
+                this.updateUserUI();
+                this.navigateTo(role === 'facilitator' ? 'facilitator' : 'workspace');
+                this.showToast(`Logged in as ${role.toUpperCase()}`, "success");
+            }
+
+            handleLogin(e) {
+                e.preventDefault();
+                this.demoQuickLogin('participant');
+            }
+
+            handleRegister(e) {
+                e.preventDefault();
+                const role = document.getElementById('reg-role').value;
+                this.demoQuickLogin(role);
+            }
+
+            logout() {
+                this.currentUser = null;
+                localStorage.removeItem('scm_user');
+                this.updateUserUI();
+                this.navigateTo('landing');
+            }
+
+            updateUserUI() {
+                const authBtns = document.getElementById('auth-buttons-container');
+                const userProfile = document.getElementById('user-profile-container');
+                if (this.currentUser) {
+                    authBtns.classList.add('hidden');
+                    userProfile.classList.remove('hidden');
+                    document.getElementById('user-display-name').textContent = this.currentUser.name;
+                    document.getElementById('user-display-role').textContent = this.currentUser.role.toUpperCase();
+                    document.getElementById('ws-participant-name').textContent = this.currentUser.name;
+                } else {
+                    authBtns.classList.remove('hidden');
+                    userProfile.classList.add('hidden');
+                }
+            }
+
+            loadDemoCourse() {
+                this.courseData = JSON.parse(JSON.stringify(DEMO_COURSE_3D));
+                this.init();
+                this.showToast("Reset course data to demo 3-domain course.", "info");
+            }
+
+            updateCourseInfo() {
+                this.courseData.code = document.getElementById('r1-course-code').value;
+                this.courseData.title = document.getElementById('r1-course-title').value;
+                this.courseData.synopsis = document.getElementById('r1-course-synopsis').value;
+                this.courseData.creditHours = parseFloat(document.getElementById('r1-credit-hours').value) || 1;
+                this.courseData.targetSLT = parseFloat(document.getElementById('r1-target-slt').value) || 40;
+                document.getElementById('ws-course-code-badge').textContent = this.courseData.code;
+                document.getElementById('ws-course-title').textContent = this.courseData.title;
+                document.getElementById('ws-target-slt').textContent = `${this.courseData.targetSLT} Hours`;
+            }
+
+            renderCLOList() {
+                const container = document.getElementById('clo-list-container');
+                container.innerHTML = this.courseData.clos.map(clo => {
+                    let badgeClass = "badge-cognitive";
+                    if (clo.domain === "Affective") badgeClass = "badge-affective";
+                    if (clo.domain === "Psychomotor") badgeClass = "badge-psychomotor";
+
+                    return `
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-xs bg-purple-100 text-purple-900 px-2.5 py-1 rounded">${clo.id}</span>
+                                <span class="${badgeClass} text-[11px] font-bold px-2.5 py-0.5 rounded-md">${clo.domain} (${clo.taxonomy})</span>
+                            </div>
+                            <textarea class="w-full text-xs p-2 border border-slate-300 rounded-lg" rows="2" onchange="app.updateCLO('${clo.id}', 'statement', this.value)">${clo.statement}</textarea>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <label class="text-[10px] font-semibold text-slate-500">Domain:</label>
+                                    <select class="w-full p-1 border border-slate-300 rounded" onchange="app.updateCLODomain('${clo.id}', this.value)">
+                                        <option ${clo.domain === 'Cognitive' ? 'selected' : ''}>Cognitive</option>
+                                        <option ${clo.domain === 'Affective' ? 'selected' : ''}>Affective</option>
+                                        <option ${clo.domain === 'Psychomotor' ? 'selected' : ''}>Psychomotor</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-semibold text-slate-500">Level:</label>
+                                    <select class="w-full p-1 border border-slate-300 rounded" onchange="app.updateCLO('${clo.id}', 'taxonomy', this.value)">
+                                        ${BLOOM_LEVELS[clo.domain].map(lvl => `<option value="${lvl.code}" ${clo.taxonomy === lvl.code ? 'selected' : ''}>${lvl.label}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            addCLO() {
+                const id = `CLO${this.courseData.clos.length + 1}`;
+                this.courseData.clos.push({ id, statement: "New outcome statement...", domain: "Cognitive", taxonomy: "C2" });
+                this.renderCLOList();
+            }
+
+            updateCLODomain(id, domain) {
+                const clo = this.courseData.clos.find(c => c.id === id);
+                if (clo) {
+                    clo.domain = domain;
+                    clo.taxonomy = BLOOM_LEVELS[domain][0].code;
+                }
+                this.renderCLOList();
+            }
+
+            updateCLO(id, field, value) {
+                const clo = this.courseData.clos.find(c => c.id === id);
+                if (clo) clo[field] = value;
+            }
+
+            renderModuleList() {
+                const container = document.getElementById('module-list-container');
+                container.innerHTML = this.courseData.modules.map(mod => `
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-amber-800 text-xs bg-amber-100 px-2 py-1 rounded">${mod.id}</span>
+                        </div>
+                        <input type="text" class="w-full text-xs font-bold p-1.5 border border-slate-300 rounded" value="${mod.name}">
+                        <textarea class="w-full text-xs p-1.5 border border-slate-300 rounded" rows="2">${mod.desc}</textarea>
+                    </div>
+                `).join('');
+            }
+
+            addModule() {
+                const id = `MOD${this.courseData.modules.length + 1}`;
+                this.courseData.modules.push({ id, name: "New Micro-Module", desc: "Module description...", topics: ["Topic"], cloId: "CLO1" });
+                this.renderModuleList();
+            }
+
+            renderMLOList() {
+                const container = document.getElementById('mlo-list-container');
+                container.innerHTML = this.courseData.mlos.map(mlo => {
+                    let badgeClass = "badge-cognitive";
+                    if (mlo.domain === "Affective") badgeClass = "badge-affective";
+                    if (mlo.domain === "Psychomotor") badgeClass = "badge-psychomotor";
+
+                    return `
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+                            <span class="font-bold text-purple-900 bg-purple-100 px-2 py-1 rounded shrink-0">${mlo.id}</span>
+                            <input type="text" class="flex-1 p-1.5 border border-slate-300 rounded" value="${mlo.statement}" onchange="app.updateMLO('${mlo.id}', 'statement', this.value)">
+                            <select class="p-1.5 border border-slate-300 rounded" onchange="app.updateMLODomain('${mlo.id}', this.value)">
+                                <option ${mlo.domain === 'Cognitive' ? 'selected' : ''}>Cognitive</option>
+                                <option ${mlo.domain === 'Affective' ? 'selected' : ''}>Affective</option>
+                                <option ${mlo.domain === 'Psychomotor' ? 'selected' : ''}>Psychomotor</option>
+                            </select>
+                            <select class="p-1.5 border border-slate-300 rounded" onchange="app.updateMLO('${mlo.id}', 'taxonomy', this.value)">
+                                ${BLOOM_LEVELS[mlo.domain].map(lvl => `<option value="${lvl.code}" ${mlo.taxonomy === lvl.code ? 'selected' : ''}>${lvl.label}</option>`).join('')}
+                            </select>
+                            <span class="${badgeClass} px-2 py-1 rounded text-[10px] font-bold">${mlo.domain}</span>
+                        </div>
+                    `;
+                }).join('');
+                this.renderMatrixTable();
+            }
+
+            addMLO() {
+                const id = `MLO${this.courseData.mlos.length + 1}`;
+                const cloAlign = {};
+                this.courseData.clos.forEach(c => cloAlign[c.id] = "None");
+                this.courseData.mlos.push({ id, moduleId: "MOD1", statement: "New outcome statement...", domain: "Cognitive", taxonomy: "C2", cloAlignment: cloAlign });
+                this.renderMLOList();
+            }
+
+            updateMLODomain(id, domain) {
+                const mlo = this.courseData.mlos.find(m => m.id === id);
+                if (mlo) {
+                    mlo.domain = domain;
+                    mlo.taxonomy = BLOOM_LEVELS[domain][0].code;
+                }
+                this.renderMLOList();
+            }
+
+            updateMLO(id, field, val) {
+                const mlo = this.courseData.mlos.find(m => m.id === id);
+                if (mlo) mlo[field] = val;
+            }
+
+            renderMatrixTable() {
+                const table = document.getElementById('matrix-table');
+                let html = `<thead class="bg-brand-purpleDark text-white"><tr><th class="p-2 text-left">Module Learning Outcome (MLO)</th>`;
+                this.courseData.clos.forEach(c => {
+                    html += `<th class="p-2">${c.id} (${c.domain.substring(0,3)})</th>`;
+                });
+                html += `</tr></thead><tbody class="divide-y divide-slate-100">`;
+
+                this.courseData.mlos.forEach(mlo => {
+                    html += `<tr><td class="p-2 text-left font-medium text-slate-700">${mlo.id}: ${mlo.statement} <span class="text-[10px] font-bold text-purple-700">(${mlo.taxonomy})</span></td>`;
+                    this.courseData.clos.forEach(c => {
+                        const align = (mlo.cloAlignment && mlo.cloAlignment[c.id]) || "None";
+                        let badgeClass = "bg-slate-100 text-slate-400";
+                        if (align === "Strong") badgeClass = "bg-emerald-100 text-emerald-800 font-bold border border-emerald-300";
+                        if (align === "Partial") badgeClass = "bg-blue-100 text-blue-800 font-bold border border-blue-300";
+
+                        html += `<td class="p-2 cursor-pointer" onclick="app.toggleMatrixCell('${mlo.id}', '${c.id}')">
+                            <span class="px-2 py-1 rounded text-[11px] ${badgeClass}">${align}</span>
+                        </td>`;
+                    });
+                    html += `</tr>`;
+                });
+                html += `</tbody>`;
+                table.innerHTML = html;
+            }
+
+            toggleMatrixCell(mloId, cloId) {
+                const mlo = this.courseData.mlos.find(m => m.id === mloId);
+                if (!mlo.cloAlignment) mlo.cloAlignment = {};
+                const current = mlo.cloAlignment[cloId] || "None";
+                const states = ["None", "Strong", "Partial"];
+                mlo.cloAlignment[cloId] = states[(states.indexOf(current) + 1) % states.length];
+                this.renderMatrixTable();
+            }
+
+            renderActivityTable() {
+                const tbody = document.getElementById('activity-table-body');
+                tbody.innerHTML = this.courseData.activities.map(act => `
+                    <tr>
+                        <td class="p-2">${act.moduleId}</td>
+                        <td class="p-2"><input type="text" class="w-full p-1 border border-slate-300 rounded" value="${act.name}" onchange="app.updateActivity('${act.id}', 'name', this.value)"></td>
+                        <td class="p-2">
+                            <select class="p-1 border border-slate-300 rounded" onchange="app.updateActivity('${act.id}', 'domain', this.value)">
+                                <option ${act.domain === 'Cognitive' ? 'selected' : ''}>Cognitive</option>
+                                <option ${act.domain === 'Affective' ? 'selected' : ''}>Affective</option>
+                                <option ${act.domain === 'Psychomotor' ? 'selected' : ''}>Psychomotor</option>
+                            </select>
+                        </td>
+                        <td class="p-2">
+                            <select class="p-1 border border-slate-300 rounded" onchange="app.updateActivity('${act.id}', 'category', this.value)">
+                                <option ${act.category === 'Guided' ? 'selected' : ''}>Guided</option>
+                                <option ${act.category === 'SCL' ? 'selected' : ''}>SCL</option>
+                                <option ${act.category === 'Formative Assessment' ? 'selected' : ''}>Formative Assessment</option>
+                                <option ${act.category === 'Summative Assessment' ? 'selected' : ''}>Summative Assessment</option>
+                            </select>
+                        </td>
+                        <td class="p-2"><input type="number" class="w-14 p-1 border border-slate-300 rounded" value="${act.guidedHours}" onchange="app.updateActivity('${act.id}', 'guidedHours', parseFloat(this.value)||0)"></td>
+                        <td class="p-2"><input type="number" class="w-14 p-1 border border-slate-300 rounded" value="${act.sclHours}" onchange="app.updateActivity('${act.id}', 'sclHours', parseFloat(this.value)||0)"></td>
+                        <td class="p-2 font-bold text-purple-900">${act.total} hrs</td>
+                        <td class="p-2 text-center">
+                            <button onclick="app.removeActivity('${act.id}')" class="text-red-500 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            addActivity() {
+                const id = `ACT${this.courseData.activities.length + 1}`;
+                this.courseData.activities.push({ id, moduleId: "MOD1", name: "New Activity", domain: "Cognitive", category: "Guided", guidedHours: 2, sclHours: 2, total: 4 });
+                this.renderActivityTable();
+                this.updateSLTSummary();
+            }
+
+            removeActivity(id) {
+                this.courseData.activities = this.courseData.activities.filter(a => a.id !== id);
+                this.renderActivityTable();
+                this.updateSLTSummary();
+            }
+
+            updateActivity(id, field, val) {
+                const act = this.courseData.activities.find(a => a.id === id);
+                if (act) {
+                    act[field] = val;
+                    act.total = (parseFloat(act.guidedHours) || 0) + (parseFloat(act.sclHours) || 0);
+                }
+                this.renderActivityTable();
+                this.updateSLTSummary();
+            }
+
+            updateSLTSummary() {
+                const total = this.courseData.activities.reduce((sum, a) => sum + (a.total || 0), 0);
+                document.getElementById('r4-total-slt-display').textContent = `${total.toFixed(1)} Hrs`;
+                if (this.chartInstance) this.initDomainChart();
+            }
+
+            initDomainChart() {
+                const ctx = document.getElementById('domainChart')?.getContext('2d');
+                if (!ctx) return;
+
+                const cogTotal = this.courseData.activities.filter(a => a.domain === 'Cognitive').reduce((s, a) => s + a.total, 0);
+                const affTotal = this.courseData.activities.filter(a => a.domain === 'Affective').reduce((s, a) => s + a.total, 0);
+                const psyTotal = this.courseData.activities.filter(a => a.domain === 'Psychomotor').reduce((s, a) => s + a.total, 0);
+
+                if (this.chartInstance) this.chartInstance.destroy();
+
+                this.chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Cognitive (Thinking)', 'Affective (Values)', 'Psychomotor (Skills)'],
+                        datasets: [{
+                            data: [cogTotal, affTotal, psyTotal],
+                            backgroundColor: ['#0284C7', '#DB2777', '#D97706']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+                    }
+                });
+            }
+
+            runQualityVerification() {
+                const tbody = document.getElementById('rubric-table-body');
+                const cogMLOs = this.courseData.mlos.filter(m => m.domain === 'Cognitive').length;
+                const affMLOs = this.courseData.mlos.filter(m => m.domain === 'Affective').length;
+                const psyMLOs = this.courseData.mlos.filter(m => m.domain === 'Psychomotor').length;
+
+                const rubric = [
+                    { name: "CLO and Topic Alignment", weight: 25, score: 25, finding: "Strong alignment across topics and Bloom's taxonomy." },
+                    { name: "Module Structure and MLO Quality", weight: 25, score: 24, finding: `Integrated ${cogMLOs} Cognitive, ${affMLOs} Affective, and ${psyMLOs} Psychomotor MLOs.` },
+                    { name: "Learning Activities Alignment", weight: 20, score: 19, finding: "Balanced mix of SCL and domain-specific assessments." },
+                    { name: "SLT Allocation Accuracy", weight: 20, score: 20, finding: "Exact 40-hour SLT calculation verified." },
+                    { name: "Overall Mapping Completeness", weight: 10, score: 10, finding: "All 5 workshop rounds completed." }
+                ];
+
+                tbody.innerHTML = rubric.map(r => `
+                    <tr>
+                        <td class="p-3 font-semibold text-slate-800">${r.name}</td>
+                        <td class="p-3 text-center font-bold text-slate-600">${r.weight}%</td>
+                        <td class="p-3 text-center font-extrabold text-brand-purpleDark">${r.score}%</td>
+                        <td class="p-3 text-slate-600">${r.finding}</td>
+                    </tr>
+                `).join('');
+            }
+
+            renderMasterTable() {
+                const tbody = document.getElementById('master-table-body');
+                tbody.innerHTML = this.courseData.mlos.map(mlo => {
+                    const mod = this.courseData.modules.find(m => m.id === mlo.moduleId) || { name: "Module" };
+                    const clo = this.courseData.clos[0] || { id: "CLO1" };
+                    const acts = this.courseData.activities.filter(a => a.moduleId === mlo.moduleId);
+                    const actSLT = acts.reduce((s, a) => s + a.total, 0);
+
+                    let badgeClass = "badge-cognitive";
+                    if (mlo.domain === "Affective") badgeClass = "badge-affective";
+                    if (mlo.domain === "Psychomotor") badgeClass = "badge-psychomotor";
+
+                    return `
+                        <tr>
+                            <td class="p-2 border font-bold text-brand-purpleDark">${clo.id}</td>
+                            <td class="p-2 border">${mod.topics.join(', ')}</td>
+                            <td class="p-2 border font-bold">${mod.name}</td>
+                            <td class="p-2 border">${mlo.statement}</td>
+                            <td class="p-2 border text-center"><span class="${badgeClass} px-2 py-0.5 rounded text-[10px] font-bold">${mlo.domain} (${mlo.taxonomy})</span></td>
+                            <td class="p-2 border">${mod.desc}</td>
+                            <td class="p-2 border">${acts.map(a => `${a.name} (${a.domain})`).join('<br>')}</td>
+                            <td class="p-2 border text-center font-bold text-purple-900">${actSLT} hrs</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            submitFinalMapping() {
+                const subId = 'SCM-3D-' + Math.floor(1000 + Math.random() * 9000);
+                const sub = {
+                    id: subId,
+                    participantName: this.currentUser?.name || 'Dr. Jane Smith',
+                    institution: this.currentUser?.institution || 'School of Management, USM',
+                    courseCode: this.courseData.code,
+                    courseTitle: this.courseData.title,
+                    totalSLT: this.courseData.activities.reduce((s, a) => s + a.total, 0),
+                    score: 94,
+                    status: 'Submitted',
+                    submittedAt: new Date().toISOString().split('T')[0],
+                    verificationId: '',
+                    feedback: '',
+                    data: JSON.parse(JSON.stringify(this.courseData))
+                };
+                this.submissions.push(sub);
+                localStorage.setItem('scm_submissions', JSON.stringify(this.submissions));
+                document.getElementById('ws-submission-status').textContent = 'Submitted';
+                document.getElementById('ws-submission-status').className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800';
+                this.showToast(`Submission Successful! Unique ID: ${subId}`, "success");
+            }
+
+            // Certificate Checking & Rendering Engine
+            checkParticipantCertificateBanner() {
+                const banner = document.getElementById('participant-cert-banner');
+                const userSub = this.submissions.find(s => s.participantName === (this.currentUser?.name || 'Dr. Jane Smith') && s.status === 'Reviewed');
+                if (userSub) {
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            }
+
+            viewCertificateForActiveParticipant() {
+                const userSub = this.submissions.find(s => s.participantName === (this.currentUser?.name || 'Dr. Jane Smith') && s.status === 'Reviewed');
+                if (userSub) {
+                    this.renderAndShowCertificate(userSub);
+                } else {
+                    this.showToast("Certificate becomes available once submission is Reviewed by Facilitator.", "info");
+                }
+            }
+
+            viewActiveSubmissionCertificate() {
+                const sub = this.submissions.find(s => s.id === this.activeReviewId);
+                if (sub) {
+                    this.renderAndShowCertificate(sub);
+                }
+            }
+
+            renderAndShowCertificate(sub) {
+                if (!sub.verificationId) {
+                    sub.verificationId = 'USM-SCM-2026-' + Math.floor(1000 + Math.random() * 9000);
+                }
+                document.getElementById('cert-participant-name').textContent = sub.participantName || 'Dr. Participant';
+                document.getElementById('cert-participant-institution').textContent = sub.institution || 'School of Management, USM';
+                document.getElementById('cert-issue-date').textContent = `Date: ${sub.submittedAt || '2026-03-15'}`;
+                document.getElementById('cert-verification-id').textContent = sub.verificationId;
+                this.openModal('certificate-modal');
+            }
+
+            loadFacilitatorData() {
+                const stored = localStorage.getItem('scm_submissions');
+                if (stored) this.submissions = JSON.parse(stored);
+
+                document.getElementById('stat-total-submissions').textContent = this.submissions.length;
+                let totalCog = 0, totalAff = 0, totalPsy = 0, totalScore = 0;
+                this.submissions.forEach(s => {
+                    const mlos = s.data?.mlos || [];
+                    totalCog += mlos.filter(m => m.domain === 'Cognitive').length;
+                    totalAff += mlos.filter(m => m.domain === 'Affective').length;
+                    totalPsy += mlos.filter(m => m.domain === 'Psychomotor').length;
+                    totalScore += parseFloat(s.score) || 0;
+                });
+                document.getElementById('stat-cog-mlos').textContent = totalCog;
+                document.getElementById('stat-aff-mlos').textContent = totalAff;
+                document.getElementById('stat-psy-mlos').textContent = totalPsy;
+                document.getElementById('stat-avg-score').textContent = this.submissions.length ? `${Math.round(totalScore / this.submissions.length)}%` : '0%';
+
+                const tbody = document.getElementById('fac-submissions-table-body');
+                tbody.innerHTML = this.submissions.map((s, idx) => {
+                    let statusClass = "bg-amber-100 text-amber-800";
+                    if (s.status === 'Reviewed') statusClass = "bg-emerald-100 text-emerald-800";
+                    if (s.status === 'Revision Required') statusClass = "bg-rose-100 text-rose-800";
+                    if (s.status === 'Under Review') statusClass = "bg-blue-100 text-blue-800";
+
+                    return `
+                        <tr>
+                            <td class="p-3 font-bold text-slate-500">${idx + 1}</td>
+                            <td class="p-3 font-bold text-brand-purpleDark">${s.participantName}</td>
+                            <td class="p-3 text-slate-600">${s.institution}</td>
+                            <td class="p-3 font-medium text-slate-800">${s.courseCode}: ${s.courseTitle}</td>
+                            <td class="p-3 text-center font-bold text-purple-900">${s.totalSLT} hrs</td>
+                            <td class="p-3 text-center font-extrabold text-emerald-600">${s.score}%</td>
+                            <td class="p-3 text-center">
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${statusClass}">${s.status}</span>
+                            </td>
+                            <td class="p-3 text-center flex items-center justify-center space-x-1">
+                                <button onclick="app.openReviewModal('${s.id}')" class="bg-brand-purple hover:bg-brand-purpleLight text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow flex items-center space-x-1">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <span>Review</span>
+                                </button>
+                                ${s.status === 'Reviewed' ? `
+                                    <button onclick="app.renderAndShowCertificate(app.submissions[${idx}])" class="bg-brand-gold hover:bg-brand-goldDark text-brand-purpleDark p-1.5 rounded-lg text-xs font-bold shadow" title="View Certificate">
+                                        <i class="fa-solid fa-award"></i>
+                                    </button>
+                                ` : ''}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            openReviewModal(subId) {
+                const sub = this.submissions.find(s => s.id === subId);
+                if (!sub) return;
+
+                this.activeReviewId = subId;
+                document.getElementById('rev-modal-title').textContent = `Review Submission - ${sub.participantName}`;
+                document.getElementById('rev-modal-subtitle').textContent = `Course: ${sub.courseCode} ${sub.courseTitle} | ${sub.institution}`;
+                document.getElementById('rev-sub-id').textContent = sub.id;
+                document.getElementById('rev-sub-date').textContent = sub.submittedAt || 'N/A';
+                document.getElementById('rev-sub-slt').textContent = `${sub.totalSLT} Hrs`;
+                document.getElementById('rev-sub-score').textContent = `${sub.score}%`;
+
+                document.getElementById('rev-input-status').value = sub.status || 'Submitted';
+                document.getElementById('rev-input-score').value = sub.score || 90;
+                document.getElementById('rev-input-feedback').value = sub.feedback || '';
+
+                const certBtn = document.getElementById('rev-btn-preview-cert');
+                if (sub.status === 'Reviewed') {
+                    certBtn.classList.remove('hidden');
+                } else {
+                    certBtn.classList.add('hidden');
+                }
+
+                const tbody = document.getElementById('rev-inspection-body');
+                const data = sub.data || DEMO_COURSE_3D;
+                tbody.innerHTML = (data.mlos || []).map(mlo => {
+                    const clo = (data.clos || [])[0] || { id: "CLO1" };
+                    const mod = (data.modules || []).find(m => m.id === mlo.moduleId) || { name: "Module" };
+                    const acts = (data.activities || []).filter(a => a.moduleId === mlo.moduleId);
+                    const sltSum = acts.reduce((s, a) => s + (a.total || 0), 0);
+
+                    let badgeClass = "badge-cognitive";
+                    if (mlo.domain === "Affective") badgeClass = "badge-affective";
+                    if (mlo.domain === "Psychomotor") badgeClass = "badge-psychomotor";
+
+                    return `
+                        <tr>
+                            <td class="p-2 border-b font-bold text-brand-purpleDark">${clo.id}</td>
+                            <td class="p-2 border-b">
+                                <div class="font-bold text-slate-800">${mod.name}</div>
+                                <div class="text-slate-600">${mlo.statement}</div>
+                            </td>
+                            <td class="p-2 border-b text-center">
+                                <span class="${badgeClass} px-2 py-0.5 rounded text-[10px] font-bold">${mlo.domain} (${mlo.taxonomy})</span>
+                            </td>
+                            <td class="p-2 border-b text-slate-600">
+                                ${acts.map(a => `<i class="fa-solid fa-angle-right text-brand-gold text-[10px] mr-1"></i>${a.name} (${a.domain})`).join('<br>')}
+                            </td>
+                            <td class="p-2 border-b text-center font-bold text-purple-900">${sltSum} hrs</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                this.openModal('review-modal');
+            }
+
+            saveFacilitatorReview(targetStatus) {
+                const sub = this.submissions.find(s => s.id === this.activeReviewId);
+                if (!sub) return;
+
+                sub.status = targetStatus || document.getElementById('rev-input-status').value;
+                sub.score = parseFloat(document.getElementById('rev-input-score').value) || sub.score;
+                sub.feedback = document.getElementById('rev-input-feedback').value;
+
+                if (sub.status === 'Reviewed' && !sub.verificationId) {
+                    sub.verificationId = 'USM-SCM-2026-' + Math.floor(1000 + Math.random() * 9000);
+                }
+
+                localStorage.setItem('scm_submissions', JSON.stringify(this.submissions));
+                this.closeModal('review-modal');
+                this.loadFacilitatorData();
+                this.showToast(`Updated submission ${sub.id} status to ${sub.status}. Certificate Issued!`, "success");
+            }
+
+            exportReport(type) {
+                if (type === 'xlsx') {
+                    const ws = XLSX.utils.json_to_sheet(this.courseData.activities);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "3-Domain Activities");
+                    XLSX.writeFile(wb, `${this.courseData.code}_3Domain_Mapping.xlsx`);
+                    this.showToast("Exported Excel workbook!", "success");
+                }
+            }
+
+            exportAllSubmissionsSummary() {
+                const ws = XLSX.utils.json_to_sheet(this.submissions);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Submissions");
+                XLSX.writeFile(wb, `Facilitator_Summary_3Domains.xlsx`);
+                this.showToast("Exported facilitator summary!", "success");
+            }
+
+            openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+            closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+            showToast(msg, type = "info") {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold text-white bg-brand-purpleDark flex items-center space-x-2 pointer-events-auto`;
+                toast.innerHTML = `<i class="fa-solid fa-bell text-brand-gold"></i><span>${msg}</span>`;
+                container.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }
+        }
+
+        let app;
+        window.onload = function() {
+            app = new SmartCourseMapApp();
+            app.init();
+        };
+    </script>
+</body>
+</html>
